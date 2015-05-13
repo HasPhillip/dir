@@ -2,16 +2,17 @@
 /*
 	Directory Image Resizer
 
-	Your pal for simple image resizing and caching. Taking control of an entire directory DIR will resize anything you want with a specially formatted URL request. Features
-	include support for remotely hosted images (in some cases), caching of resized images, and (with a touch of JavaScript) HiDPI display support (for both mobile and 
-	desktop applications).
+	Your pal for simple image resizing and caching. Taking control of an entire directory DIR will resize anything you 
+	want with a specially formatted URL request. Features include support for remotely hosted images (in some cases), 
+	caching of resized images, and (with a touch of JavaScript) HiDPI display support (for both mobile and desktop 
+	applications).
 
 	Requirements:
 		PHP5 or later
 		Image GD
 		The appropriate .htaccess file in the same directory as this script
 
-	Feb 14 2013 - Phillip Gooch
+	Phillip Gooch <phillip.gooch@gmail.com>
 */
 
 // Details on the following settings can be found in the readme.md file.
@@ -21,9 +22,9 @@ define('cache_directory','./_cache');// If the directory is not found it will at
 define('enable_retina_support',true);// Requires the included javascript to be added to the page.
 define('resize_fuzziness_factor',0.11);// The amount it of distortion allowed when resizing, a percentage between 0 and 1
 define('thumbnail_file_extension',true);
-define('force_jpeg_thumbs',false);// Will force all thumbails to be JPEGs, regardless of transparency.
-define('padding_color','255,255,255');// The color of the padding, this will only be used if you are forcing jpegs, otherwise padding is clear. bust be in r,g,b format
-define('show_debug',false);// This will prevent the image from loading 
+define('force_jpeg_thumbs',false);// Will force all thumbnails to be JPEGs, regardless of transparency.
+define('padding_color','255,255,255');// The color of the padding, this will only be used if you are forcing jpegs, otherwise padding is clear. must be in r,g,b format
+define('show_debug',false);// This will prevent the image from loading but show info that might be helpful in determining why they are failing to load
 
 // Determine the mod string (if there is one) and the image
 $image = explode(images_directory,$_SERVER['REQUEST_URI'],2);
@@ -74,7 +75,8 @@ $img['h'] = $details[1];
 $img['w'] = $details[0];
 $img['mime'] = $details['mime'];
 unset($details);// Cleanup
-// These are done it completely different ways for local and remote files
+
+// These are done in completely different ways for local and remote files
 if($img['location']=='local'){
 	$img['modified'] = filemtime($image);
 	$img['md5'] = md5_file($image);
@@ -96,7 +98,7 @@ if(isset($mod)){
 	);
 	unset($size); // Cleanup
 
-	// Check if retina support is enabled and if the cookie is set, if so pretend we asked a larger image
+	// Check if retina support is enabled and if the cookie is set, if so pretend we asked for a larger image
 	if(enable_retina_support){
 		if(isset($_COOKIE['dir'])){
 			$cookie = json_decode($_COOKIE['dir']);
@@ -141,7 +143,7 @@ if(isset($mod)){
 			$mod['t'] = 'd';
 		}
 
-		// Lets do all the math needed to make the resize
+		// Lets do all the maths needed to make the resize
 		switch($mod['t']){
 			case 'd': // Distort, mangles the image until it fits into the box.
 				$resize = array(
@@ -171,7 +173,7 @@ if(isset($mod)){
 				);
 				unset($scale,$scaled_w,$scaled_w);// Cleaning up
 			break; 
-			case 'n': // Nerest, image will be within size constraings, but at whatever site is natural
+			case 'n': // Nearest, image will be within size constrains, but at whatever site is natural
 				$scale = min($mod['w']/$img['w'],$mod['h']/$img['h']);
 				$mod['w'] = round($scale*$img['w']);
 				$mod['h'] = round($scale*$img['h']);
@@ -257,6 +259,7 @@ if(show_debug){
 	echo 'resize: '.@print_r($resize,true);
 	exit;
 }
+
 // Output the 304 header or the actual image.
 if(@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$img['modified'] || @trim($_SERVER['HTTP_IF_NONE_MATCH'])==$img['mime']){
    header("HTTP/1.1 304 Not Modified");
@@ -264,4 +267,5 @@ if(@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$img['modified'] || @trim($_S
 }
 header('Content-Type: '.$img['mime']);
 readfile($image);
-// Goodbye, and that you for using the Directory Image Resizer
+
+// Goodbye, and thank you for using the Directory Image Resizer

@@ -3,7 +3,7 @@
 ## Requirements
 The server must support .htaccess rewrites and have image GD installed. This has only been tested with PHP 5.4.X, but is likely to work with older versions.
 
-_Note: This script works under the assumption that all of the format handelers are installed with image GD, if however one is missing (like PNG is missing in the default Max OS 10.10 Yosimite install) then that format will be unavailable for resizing or saving._
+_Note: This script works under the assumption that all of the format handlers are installed with image GD, if however one is missing (like PNG is missing in the default Max OS 10.10 Yosimite install) then that format will be unavailable for resizing or saving._
 
 ## Example
 You can copy the `example` directory to the server to create a simple example of the script (although you may need to adjust permissions of the caching directory). An example is also available online at [http://phillipgooch.com/github-examples/dir/](http://phillipgooch.com/github-examples/dir/). _Please note the online example may not be completely up-to-date._
@@ -68,6 +68,9 @@ If an image fails to load opening just the image in a new tab may give an error 
 For further support leave a GitHub issue or contact me directly at [phillip.gooch@gmail.com](mailto:phillip.gooch@gmail.com).
 
 ## Version History
+#### 1.3.4
+- Fixed some typos in the comments.
+
 #### 1.3.3
 - Fixed a bug that would cause the script to not load cached files even when they were available.
 - Added the option to override the default saving system and always save as a JPEG.
