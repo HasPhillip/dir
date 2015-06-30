@@ -51,7 +51,9 @@ mysite.com/images/http://www.theirsite.com/their-images/something-big.jpg
 would become  
 mysite.com/images/200x200n/http://www.theirsite.com/their-images/something-big.jpg
 
-The formatting for the pseudo directory is `desired_width` x `desired_height``resize_method`. The `resizing_method` can be one of the following:
+The formatting for the pseudo directory is `desired_width` x `desired_height``resize_method`. The desired width should be in pixels. In addition to setting the image dimensions directly you can use the `a` or `f` options. By replacing one or both of the dimensions with `a` it will use the auto-calculated size, which is the natural size of the image. The `f` option will use the viewers window dimenions as reported by JS. 
+
+The `resizing_method` can be one of the following:
 
 - **`d`** : Distort - Distorts the image so it fit exactly in the desired dimensions.
 - **`p`** : Padding - Adds a padding around the image so that it is constrained within the desired dimensions and has the exact same final dimensions as desired.
@@ -68,6 +70,10 @@ If an image fails to load opening just the image in a new tab may give an error 
 For further support leave a GitHub issue or contact me directly at [phillip.gooch@gmail.com](mailto:phillip.gooch@gmail.com).
 
 ## Version History
+#### 1.4.4
+- Added image size options `a` and `f` to automatically detect size and use the full screen width respectivly.
+- Fixed some quirks in the caching system.
+
 #### 1.3.4
 - Fixed some typos in the comments.
 

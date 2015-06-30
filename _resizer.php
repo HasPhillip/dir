@@ -2,17 +2,16 @@
 /*
 	Directory Image Resizer
 
-	Your pal for simple image resizing and caching. Taking control of an entire directory DIR will resize anything you 
-	want with a specially formatted URL request. Features include support for remotely hosted images (in some cases), 
-	caching of resized images, and (with a touch of JavaScript) HiDPI display support (for both mobile and desktop 
-	applications).
+	Your pal for simple image resizing and caching. Taking control of an entire directory DIR will resize anything you want with a specially formatted URL request. Features
+	include support for remotely hosted images (in some cases), caching of resized images, and (with a touch of JavaScript) HiDPI display support (for both mobile and 
+	desktop applications).
 
 	Requirements:
 		PHP5 or later
 		Image GD
 		The appropriate .htaccess file in the same directory as this script
 
-	Phillip Gooch <phillip.gooch@gmail.com>
+	Feb 14 2013 - Phillip Gooch
 */
 
 // Details on the following settings can be found in the readme.md file.
@@ -22,9 +21,9 @@ define('cache_directory','./_cache');// If the directory is not found it will at
 define('enable_retina_support',true);// Requires the included javascript to be added to the page.
 define('resize_fuzziness_factor',0.11);// The amount it of distortion allowed when resizing, a percentage between 0 and 1
 define('thumbnail_file_extension',true);
-define('force_jpeg_thumbs',false);// Will force all thumbnails to be JPEGs, regardless of transparency.
-define('padding_color','255,255,255');// The color of the padding, this will only be used if you are forcing jpegs, otherwise padding is clear. must be in r,g,b format
-define('show_debug',false);// This will prevent the image from loading but show info that might be helpful in determining why they are failing to load
+define('force_jpeg_thumbs',false);// Will force all thumbails to be JPEGs, regardless of transparency.
+define('padding_color','255,255,255');// The color of the padding, this will only be used if you are forcing jpegs, otherwise padding is clear. bust be in r,g,b format
+define('show_debug',false);// This will prevent the image from loading 
 
 // Determine the mod string (if there is one) and the image
 $image = explode(images_directory,$_SERVER['REQUEST_URI'],2);
@@ -32,7 +31,7 @@ $image = ltrim($image[1],'/');
 $image = urldecode($image);
 list($mod,$image)=explode('/',$image.'/',2);
 
-if(preg_match('~([0-9]+)x([0-9]+)([dcpn])?~',$mod)===0){
+if(preg_match('~([0-9]+|a|f)x([0-9]+|a|f)([dcpn])?~',$mod)===0){
 	// That does not appear to be a valid mod string, we will assume it's an unmodified image and will not do anything.
 	$image = $mod.'/'.$image;
 	unset($mod); //Cleanup, and it's used later via isset check
@@ -75,8 +74,7 @@ $img['h'] = $details[1];
 $img['w'] = $details[0];
 $img['mime'] = $details['mime'];
 unset($details);// Cleanup
-
-// These are done in completely different ways for local and remote files
+// These are done it completely different ways for local and remote files
 if($img['location']=='local'){
 	$img['modified'] = filemtime($image);
 	$img['md5'] = md5_file($image);
@@ -86,11 +84,29 @@ if($img['location']=='local'){
 	$img['modified'] = substr(preg_replace('~[^0-9]~','',$img['md5']).'0123456789',0,10); // 0-10 is a safety in case the md5 is somehow all letters.
 }
 
+// Get the cookie or make a fake one
+if(isset($_COOKIE['dir'])){
+	$cookie = json_decode($_COOKIE['dir'],true);
+	if(isset($cookie['lastPixelRatioUpdate'])){
+		$cookie['lastPixelRatioUpdate'] = floor($cookie['lastPixelRatioUpdate']/1000);
+	}else{
+		$cookie['lastPixelRatioUpdate'] = 0;
+	}
+}else{
+	$cookie = array(
+		'pixelRatio' => 1,
+		'lastPixelRatioUpdate' => -1,
+		'screenWidth' => 1920,
+		'screenHeight' => 1080,
+		'dirVersion' => 2
+	);
+}
+
 // If we have a mod string there is a lot to do, otherwise we can simply just use the image as is.
 if(isset($mod)){
 
 	// Mangle the mod into it's usable parts
-	preg_match_all('~([0-9]+)?x([0-9]+)?([dcpn])?~',$mod,$size);
+	preg_match_all('~([0-9]+|a|f)?x([0-9]+|a|f)?([dcpn])?~',$mod,$size);
 	$mod = array(
 		'w' => $size[1][0], // Width
 		'h' => $size[2][0], // Height
@@ -98,14 +114,29 @@ if(isset($mod)){
 	);
 	unset($size); // Cleanup
 
-	// Check if retina support is enabled and if the cookie is set, if so pretend we asked for a larger image
-	if(enable_retina_support){
-		if(isset($_COOKIE['dir'])){
-			$cookie = json_decode($_COOKIE['dir']);
-			$mod['w'] *= round($cookie->pixelRatio);
-			$mod['h'] *= round($cookie->pixelRatio);
-			unset($cookie); // Cleanup
+	// Figure out the [a]uto and [f]ullsize vars
+	foreach($mod as $k => $v){
+		if($k!='t'){
+			switch($v){
+				// A for Auto
+				case 'a':
+					$mod[$k] = $img[$k];
+				break;
+				case 'f':
+					if($k=='w'){
+						$mod[$k] = $cookie['screenWidth'];
+					}else{
+						$mod[$k] = $cookie['screenHeight'];
+					}
+				break;
+			}
 		}
+	}
+
+	// Check if retina support is enabled and if the cookie is set, if so pretend we asked a larger image
+	if(enable_retina_support){
+		$mod['w'] *= round($cookie['pixelRatio']);
+		$mod['h'] *= round($cookie['pixelRatio']);
 	}
 
 	// Make sure the mod resize type is there, if not them make it the default
@@ -143,7 +174,7 @@ if(isset($mod)){
 			$mod['t'] = 'd';
 		}
 
-		// Lets do all the maths needed to make the resize
+		// Lets do all the math needed to make the resize
 		switch($mod['t']){
 			case 'd': // Distort, mangles the image until it fits into the box.
 				$resize = array(
@@ -173,7 +204,7 @@ if(isset($mod)){
 				);
 				unset($scale,$scaled_w,$scaled_w);// Cleaning up
 			break; 
-			case 'n': // Nearest, image will be within size constrains, but at whatever site is natural
+			case 'n': // Nerest, image will be within size constraings, but at whatever site is natural
 				$scale = min($mod['w']/$img['w'],$mod['h']/$img['h']);
 				$mod['w'] = round($scale*$img['w']);
 				$mod['h'] = round($scale*$img['h']);
@@ -239,13 +270,15 @@ if(isset($mod)){
 // Check if the image is there, if not then it failed to save it, have it error and exit out.
 if(!is_file($image)){
 	echo 'Unable to find the cached image copy, does the cache directory have write access?.';
+	header('HTTP/1.1 404 Not Found');
 	exit;
 }
 
-// Output all the headers and image data
-header("Last-Modified: ".gmdate("D, d M Y H:i:s",$img['modified'])." GMT");
-header("Etag: ".$img['mime']);
-header('Cache-Control: public');
+// If the "$_SERVER['HTTP_IF_MODIFIED_SINCE']" is not found then put some really fake data in
+if(!isset($_SERVER['HTTP_IF_MODIFIED_SINCE'])){
+	$_SERVER['HTTP_IF_MODIFIED_SINCE'] = -1;
+	$_SERVER['HTTP_IF_NONE_MATCH'] = 'fake/fake';
+}
 
 // Show the debug information if definition set, this prevents the image form loading.
 if(show_debug){
@@ -256,16 +289,38 @@ if(show_debug){
 	echo 'mod: '.print_r($mod,true);
 	echo 'cached_path: '.$cached_path.'<br/>';
 	echo 'cached_found: '.(is_file($cached_path)?'yes':'no').'<br/>';
-	echo 'resize: '.@print_r($resize,true);
+	echo 'resize: '.@print_r($resize,true).'<br/>';
+	echo 'cookie: '.print_r($cookie,true);
+	echo 'HTTP_IF_MODIFIED_SINCE '.strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']).'<br/>';
+	echo '$img[\'modified\']: '.$img['modified'].'<br/>';
+	echo '$cookie[\'lastPixelRatioUpdate\']: '.$cookie['lastPixelRatioUpdate'].'<br/>';
+	echo 'HTTP_IF_NONE_MATCH: '.$_SERVER['HTTP_IF_NONE_MATCH'].'<br/>';
+	echo '$img[\'mime\']: '.$img['mime'].'<br/>';
+	echo '<br/><br/>';
+	// run the same check as below
+	echo 'Will it use the locally cached copy? ';
+	if(@ strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])>=$img['modified'] && trim($_SERVER['HTTP_IF_NONE_MATCH'])>=$img['mime']  && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])>=$cookie['lastPixelRatioUpdate'] ){
+		echo 'yes';
+	}else{
+		echo 'no';
+	}
+	echo '<br/><br/>';
+	echo '<b>Remember to clear your cache once you deactivate debug mode, otherwise your browser will try to use the cached debug page as an image.</b>';
+	// exit out
 	exit;
 }
 
 // Output the 304 header or the actual image.
-if(@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])==$img['modified'] || @trim($_SERVER['HTTP_IF_NONE_MATCH'])==$img['mime']){
+if(@ strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])>=$img['modified'] && trim($_SERVER['HTTP_IF_NONE_MATCH'])>=$img['mime'] && strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE'])>=$cookie['lastPixelRatioUpdate'] ){
    header("HTTP/1.1 304 Not Modified");
    exit;
 }
+
+
+// Output all the headers and image data
+header("Last-Modified: ".gmdate("D, d M Y H:i:s",max($img['modified'],$cookie['lastPixelRatioUpdate']))." GMT");
+header("Etag: ".$img['mime']);
+header('Cache-Control: public');
 header('Content-Type: '.$img['mime']);
 readfile($image);
-
 // Goodbye, and thank you for using the Directory Image Resizer
